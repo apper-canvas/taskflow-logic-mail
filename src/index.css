@@ -189,3 +189,19 @@
     font-size: 0.75rem;
   }
 }
+
+/* Subtask hierarchy styles */
+.subtask-connector {
+  position: relative;
+}
+
+.subtask-connector::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, #cbd5e1, transparent);
+  opacity: 0.5;
+}

@@ -14,6 +14,7 @@ const MainFeature = () => {
     priority: 'medium',
     category: 'personal'
   })
+  const [parentTaskId, setParentTaskId] = useState(null)
   const [filter, setFilter] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
@@ -40,6 +41,7 @@ const MainFeature = () => {
       priority: 'medium',
       category: 'personal'
     })
+    setParentTaskId(null)
     setEditingTask(null)
     setShowForm(false)
   }
@@ -63,6 +65,7 @@ const MainFeature = () => {
       const task = {
         ...newTask,
         id: Date.now().toString(),
+        parentId: parentTaskId,
         status: 'pending',
         createdAt: new Date().toISOString(),
         completed: false
@@ -94,6 +97,43 @@ const MainFeature = () => {
     setNewTask(task)
     setEditingTask(task.id)
     setShowForm(true)
+  }
+
+  const addSubtask = (parentId) => {
+    setParentTaskId(parentId)
+    setNewTask({
+      title: '',
+      description: '',
+      dueDate: '',
+      priority: 'medium',
+      category: 'personal'
+    })
+    setEditingTask(null)
+    setShowForm(true)
+  }
+
+  const getSubtasks = (parentId) => {
+    return tasks.filter(task => task.parentId === parentId)
+  }
+
+  const getMainTasks = () => {
+    return tasks.filter(task => !task.parentId)
+  }
+
+  const deleteTaskWithSubtasks = (taskId) => {
+    const confirmDelete = window.confirm(
+      'This will delete the task and all its subtasks. Are you sure?'
+    )
+    if (confirmDelete) {
+      const taskToDelete = tasks.find(t => t.id === taskId)
+      const subtasks = getSubtasks(taskId)
+      
+      // Delete the task and all its subtasks
+      const tasksToRemove = [taskId, ...subtasks.map(st => st.id)]
+      setTasks(tasks.filter(task => !tasksToRemove.includes(task.id)))
+      
+      toast.success(`Task and ${subtasks.length} subtask(s) deleted successfully`)
+    }
   }
 
   const getPriorityColor = (priority) => {
@@ -139,6 +179,139 @@ const MainFeature = () => {
     overdue: tasks.filter(t => !t.completed && t.dueDate && isPast(new Date(t.dueDate))).length
   }
 
+  const renderTaskWithSubtasks = (task, level = 0, index = 0) => {
+    const subtasks = getSubtasks(task.id)
+    const isFiltered = filteredTasks.includes(task)
+    
+    if (!isFiltered && level === 0) return null
+
+    return (
+      <div key={task.id}>
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -20, opacity: 0 }}
+          transition={{ delay: index * 0.1 }}
+          className={`glass-morphism dark:bg-surface-800/30 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-surface-200/20 dark:border-surface-700/30 shadow-soft hover:shadow-lg transition-all duration-300 ${
+            task.completed ? 'opacity-70' : ''
+          } ${level > 0 ? `ml-${Math.min(level * 8, 16)} border-l-4 border-primary/30` : ''}`}
+          style={{ marginLeft: level > 2 ? `${level * 2}rem` : undefined }}
+        >
+          {level > 0 && (
+            <div className="flex items-center gap-2 mb-2 text-xs text-surface-500 dark:text-surface-400">
+              <div className="w-4 h-px bg-surface-300 dark:bg-surface-600"></div>
+              <span>Subtask {level > 1 ? `(Level ${level})` : ''}</span>
+            </div>
+          )}
+          
+          {renderTaskContent(task, level)}
+        </motion.div>
+        
+        {/* Render subtasks */}
+        {subtasks.length > 0 && (
+          <div className="mt-3 space-y-3">
+            {subtasks.map((subtask, subIndex) => 
+              renderTaskWithSubtasks(subtask, level + 1, subIndex)
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderTaskContent = (task, level = 0) => {
+    const subtasks = getSubtasks(task.id)
+    
+  return (
+      <div className="flex flex-col sm:flex-row items-start gap-4">
+        <button
+          onClick={() => toggleTaskComplete(task.id)}
+          className={`w-6 h-6 rounded-lg border-2 transition-all duration-300 flex items-center justify-center ${
+            task.completed
+              ? 'bg-gradient-to-r from-accent to-green-600 border-accent'
+              : 'border-surface-300 dark:border-surface-600 hover:border-accent'
+          }`}
+        >
+          {task.completed && (
+            <ApperIcon name="Check" className="w-4 h-4 text-white" />
+          )}
+        </button>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+            <h3 className={`font-semibold text-surface-800 dark:text-surface-200 ${
+              task.completed ? 'line-through' : ''
+            }`}>
+              {task.title}
+              {subtasks.length > 0 && (
+                <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                  {subtasks.length} subtask{subtasks.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-gradient-to-r ${getPriorityColor(task.priority)} text-white`}>
+                <ApperIcon name="Flag" className="w-3 h-3" />
+                {task.priority}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300">
+                <ApperIcon name={getCategoryIcon(task.category)} className="w-3 h-3" />
+                {task.category}
+              </span>
+            </div>
+          </div>
+          
+          {task.description && (
+            <p className="text-sm text-surface-600 dark:text-surface-400 mb-2">
+              {task.description}
+            </p>
+          )}
+          
+          {task.dueDate && (
+            <div className="flex items-center gap-1 text-xs text-surface-500 dark:text-surface-500">
+              <ApperIcon name="Calendar" className="w-3 h-3" />
+              <span>{getDateDisplay(task.dueDate)}</span>
+              {!task.completed && isPast(new Date(task.dueDate)) && (
+                <span className="text-red-500 font-medium">(Overdue)</span>
+              )}
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {level === 0 && (
+            <button
+              onClick={() => addSubtask(task.id)}
+              className="flex-1 sm:flex-initial neu-button p-2 rounded-lg hover:scale-105 transition-all duration-300"
+              title="Add Subtask"
+            >
+              <ApperIcon name="Plus" className="w-4 h-4 text-primary" />
+            </button>
+          )}
+          <button
+            onClick={() => startEdit(task)}
+            className="flex-1 sm:flex-initial neu-button p-2 rounded-lg hover:scale-105 transition-all duration-300"
+          >
+            <ApperIcon name="Edit" className="w-4 h-4 text-surface-600 dark:text-surface-400" />
+          </button>
+          <button
+            onClick={() => {
+              const subtasks = getSubtasks(task.id)
+              if (subtasks.length > 0) {
+                deleteTaskWithSubtasks(task.id)
+              } else {
+                deleteTask(task.id)
+              }
+            }}
+            className="flex-1 sm:flex-initial neu-button p-2 rounded-lg hover:scale-105 transition-all duration-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            <ApperIcon name="Trash2" className="w-4 h-4 text-red-500" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with Actions */}
@@ -148,6 +321,11 @@ const MainFeature = () => {
             <h2 className="text-xl sm:text-2xl font-bold text-surface-800 dark:text-surface-200 mb-1">
               Task Management Hub
             </h2>
+            {parentTaskId && (
+              <p className="text-sm text-primary font-medium">
+                Adding subtask to: {tasks.find(t => t.id === parentTaskId)?.title}
+              </p>
+            )}
             <p className="text-sm text-surface-600 dark:text-surface-400">
               Organize, prioritize, and track your daily tasks
             </p>
@@ -172,7 +350,7 @@ const MainFeature = () => {
               className="neu-button px-4 sm:px-6 py-3 rounded-xl font-medium text-surface-700 dark:text-surface-300 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
             >
               <ApperIcon name={showForm ? "X" : "Plus"} className="w-5 h-5" />
-              <span>{showForm ? "Cancel" : "New Task"}</span>
+              <span>{showForm ? "Cancel" : parentTaskId ? "New Subtask" : "New Task"}</span>
             </button>
           </div>
         </div>
@@ -193,7 +371,7 @@ const MainFeature = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
-                      Task Title *
+                      {parentTaskId ? 'Subtask' : 'Task'} Title *
                     </label>
                     <input
                       type="text"
@@ -268,7 +446,7 @@ const MainFeature = () => {
                     className="flex-1 bg-gradient-to-r from-primary to-primary-dark text-white px-6 py-3 rounded-xl font-medium shadow-soft hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
                   >
                     <ApperIcon name={editingTask ? "Save" : "Plus"} className="w-5 h-5" />
-                    <span>{editingTask ? "Update Task" : "Create Task"}</span>
+                    <span>{editingTask ? "Update Task" : parentTaskId ? "Create Subtask" : "Create Task"}</span>
                   </button>
                   <button
                     type="button"
@@ -316,84 +494,16 @@ const MainFeature = () => {
       {/* Tasks List */}
       <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
         <AnimatePresence>
-          {filteredTasks.length > 0 ? (
-            filteredTasks.map((task, index) => (
-              <motion.div
-                key={task.id}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -20, opacity: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`glass-morphism dark:bg-surface-800/30 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-surface-200/20 dark:border-surface-700/30 shadow-soft hover:shadow-lg transition-all duration-300 ${
-                  task.completed ? 'opacity-70' : ''
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-start gap-4">
-                  <button
-                    onClick={() => toggleTaskComplete(task.id)}
-                    className={`w-6 h-6 rounded-lg border-2 transition-all duration-300 flex items-center justify-center ${
-                      task.completed
-                        ? 'bg-gradient-to-r from-accent to-green-600 border-accent'
-                        : 'border-surface-300 dark:border-surface-600 hover:border-accent'
-                    }`}
-                  >
-                    {task.completed && (
-                      <ApperIcon name="Check" className="w-4 h-4 text-white" />
-                    )}
-                  </button>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                      <h3 className={`font-semibold text-surface-800 dark:text-surface-200 ${
-                        task.completed ? 'line-through' : ''
-                      }`}>
-                        {task.title}
-                      </h3>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-gradient-to-r ${getPriorityColor(task.priority)} text-white`}>
-                          <ApperIcon name="Flag" className="w-3 h-3" />
-                          {task.priority}
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300">
-                          <ApperIcon name={getCategoryIcon(task.category)} className="w-3 h-3" />
-                          {task.category}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {task.description && (
-                      <p className="text-sm text-surface-600 dark:text-surface-400 mb-2">
-                        {task.description}
-                      </p>
-                    )}
-                    
-                    {task.dueDate && (
-                      <div className="flex items-center gap-1 text-xs text-surface-500 dark:text-surface-500">
-                        <ApperIcon name="Calendar" className="w-3 h-3" />
-                        <span>{getDateDisplay(task.dueDate)}</span>
-                        {!task.completed && isPast(new Date(task.dueDate)) && (
-                          <span className="text-red-500 font-medium">(Overdue)</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={() => startEdit(task)}
-                      className="flex-1 sm:flex-initial neu-button p-2 rounded-lg hover:scale-105 transition-all duration-300"
-                    >
-                      <ApperIcon name="Edit" className="w-4 h-4 text-surface-600 dark:text-surface-400" />
-                    </button>
-                    <button
-                      onClick={() => deleteTask(task.id)}
-                      className="flex-1 sm:flex-initial neu-button p-2 rounded-lg hover:scale-105 transition-all duration-300 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      <ApperIcon name="Trash2" className="w-4 h-4 text-red-500" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
+          {getMainTasks().filter(task => filteredTasks.includes(task)).length > 0 ? (
+            getMainTasks()
+              .filter(task => filteredTasks.includes(task))
+              .map((task, index) => renderTaskWithSubtasks(task, 0, index))
+          ) : (
+            // If no main tasks, check if there are subtasks that match the filter
+            filteredTasks.filter(task => task.parentId).length > 0 ? (
+              filteredTasks
+                .filter(task => task.parentId)
+                .map((task, index) => renderTaskWithSubtasks(task, 1, index))
             ))
           ) : (
             <motion.div
