@@ -494,19 +494,16 @@ const MainFeature = () => {
       {/* Tasks List */}
       <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
         <AnimatePresence>
-          {getMainTasks().filter(task => filteredTasks.includes(task)).length > 0 ? 
+          {getMainTasks().filter(task => filteredTasks.includes(task)).length > 0 ? (
             getMainTasks()
               .filter(task => filteredTasks.includes(task))
               .map((task, index) => renderTaskWithSubtasks(task, 0, index))
-          ) : (
+          ) : filteredTasks.filter(task => task.parentId).length > 0 ? (
             // If no main tasks, check if there are subtasks that match the filter
-            filteredTasks.filter(task => task.parentId).length > 0 ? (
-              filteredTasks
-                .filter(task => task.parentId)
-                .map((task, index) => renderTaskWithSubtasks(task, 1, index))
-            ) : 
+            filteredTasks
+              .filter(task => task.parentId)
+              .map((task, index) => renderTaskWithSubtasks(task, 1, index))
           ) : (
-            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="glass-morphism dark:bg-surface-800/30 backdrop-blur-xl rounded-2xl p-8 sm:p-12 border border-surface-200/20 dark:border-surface-700/30 shadow-soft text-center"
