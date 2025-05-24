@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
 import { format, isToday, isTomorrow, isPast } from 'date-fns'
@@ -16,6 +17,7 @@ const MainFeature = () => {
   const [filter, setFilter] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
+  const [viewMode, setViewMode] = useState('list')
 
   // Load tasks from localStorage on component mount
   useEffect(() => {
@@ -150,13 +152,29 @@ const MainFeature = () => {
               Organize, prioritize, and track your daily tasks
             </p>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="w-full sm:w-auto neu-button px-4 sm:px-6 py-3 rounded-xl font-medium text-surface-700 dark:text-surface-300 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
-          >
-            <ApperIcon name={showForm ? "X" : "Plus"} className="w-5 h-5" />
-            <span>{showForm ? "Cancel" : "New Task"}</span>
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <Link
+              to="/calendar"
+              className="neu-button px-4 sm:px-6 py-3 rounded-xl font-medium text-surface-700 dark:text-surface-300 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <ApperIcon name="Calendar" className="w-5 h-5" />
+              <span>Calendar View</span>
+            </Link>
+            <button
+              onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}
+              className="neu-button px-4 sm:px-6 py-3 rounded-xl font-medium text-surface-700 dark:text-surface-300 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <ApperIcon name={viewMode === 'list' ? "Grid" : "List"} className="w-5 h-5" />
+              <span>{viewMode === 'list' ? "Grid" : "List"}</span>
+            </button>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="neu-button px-4 sm:px-6 py-3 rounded-xl font-medium text-surface-700 dark:text-surface-300 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <ApperIcon name={showForm ? "X" : "Plus"} className="w-5 h-5" />
+              <span>{showForm ? "Cancel" : "New Task"}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -296,7 +314,7 @@ const MainFeature = () => {
       </div>
 
       {/* Tasks List */}
-      <div className="space-y-3">
+      <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
         <AnimatePresence>
           {filteredTasks.length > 0 ? (
             filteredTasks.map((task, index) => (
