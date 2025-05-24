@@ -504,7 +504,7 @@ const MainFeature = () => {
               filteredTasks
                 .filter(task => task.parentId)
                 .map((task, index) => renderTaskWithSubtasks(task, 1, index))
-            ))
+            ) : null
           ) : (
             <motion.div
               initial={{ opacity: 0 }}
